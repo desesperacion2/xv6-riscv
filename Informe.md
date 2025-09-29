@@ -1,44 +1,19 @@
-## Pasos de Configuración
+# INFORME.md  
+## Tarea 1 — Implementación de Llamadas al Sistema en xv6  
+### Parte I: Implementación Básica — `getppid()`
 
-### 1.Fork del Repositorio
-Realicé un fork del repositorio oficial de XV6 para tener mi propia copia del proyecto.
+---
 
-### 2.Creación de Rama de Trabajo
-Una vez en el directorio del proyecto, creé una nueva rama con mi nombre.
+### 🔹 Objetivo
+Implementar una nueva llamada al sistema en xv6 llamada `getppid()`, la cual retorna el **PID del proceso padre** del proceso que la invoca.  
+Esta tarea tiene como propósito comprender el flujo de implementación de una syscall dentro del kernel de xv6 y su integración con el espacio de usuario.
 
-### 3.Configuración de VM en Google Cloud
-Creé una nueva máquina virtual en Google Cloud.
+---
 
-### 4.Instalación de Git
-Instalé Git en la VM para el control de versiones:
-
-### 5.Autenticación con GitHub
-Configuré la autenticación con GitHub creando un token de acceso personal
-
-### 6.Clonación del Repositorio
-Cloné mi fork del repositorio XV6 en la VM:
-
-### 7.Instalación de Dependencias
-Instalé las herramientas necesarias para compilar XV6
-(sudo apt install make qemu bc gcc)
-
-### 8.Compilación de XV6
-Compilé el sistema operativo XV6
-
-## Problemas Encontrados y Soluciones
-
-#### Error en `make qemu`
-
-**Problema:** 
-Después de instalar todas las dependencias listadas, el comando `make qemu` fallaba con errores de compilación. 
-Consulté el error con una IA, que identificó una falta de herramientas de compilación completas.
-
-**Solución:** 
-El problema se resolvió instalando el paquete `build-essential`, que incluye un conjunto completo de herramientas de compilación además de gcc:
-
-
-`sudo apt install build-essential`
-
-
-### Verificación Final
-Una vez instalado `build-essential`, el comando `make qemu` funcionó correctamente y XV6 se ejecutó sin problemas.
+### 🔹 Contexto Inicial
+El entorno de trabajo ya se encontraba completamente configurado:  
+- Máquina virtual Linux con compiladores y dependencias instaladas (`riscv64-linux-gnu-gcc`, `qemu`, `make`, etc).  
+- Repositorio `xv6-riscv` clonado desde GitHub y funcional.  
+- Rama creada específicamente para la tarea:  
+  ```bash
+  git checkout -b emilio_suazo_t1
