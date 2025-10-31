@@ -4,7 +4,7 @@
 
 ---
 
-## [cite_start]1. Funcionamiento y Lógica de la Implementación [cite: 46]
+## 1. Funcionamiento y Lógica de la Implementación
 
 Se reemplazó la lógica del planificador Round-Robin original de XV6-RISC-V por el algoritmo de Lottery Scheduling. [cite_start]Este sistema garantiza que cada proceso reciba una fracción de tiempo de CPU proporcional a sus *tickets* asignados, aunque con una variabilidad inherente a la aleatoriedad[cite: 5].
 
@@ -19,55 +19,49 @@ La función `scheduler()` ahora sigue la siguiente lógica:
 
 ---
 
-## [cite_start]2. Explicación de las Modificaciones Realizadas [cite: 47]
+## 2. Explicación de las Modificaciones Realizadas
 
-A continuación, se detallan los archivos clave y los cambios implementados:
+[cite_start]A continuación, se detallan los archivos clave y los cambios implementados[cite: 47]:
 
 ### Archivos del Kernel (XV6)
 
-* **`proc.h`:**
-    * [cite_start]Se agregaron los campos `int tickets;` y `int cpu_slices;` a `struct proc` para manejar la asignación de la lotería y la contabilidad de uso de CPU, respectivamente[cite: 8, 25].
+* [cite_start]**`proc.h`:** Se agregó el campo `int tickets;` para almacenar la cantidad de tickets de cada proceso [cite: 8, 39] [cite_start]y `int cpu_slices;` para llevar la contabilidad de CPU[cite: 25, 42].
 * **`proc.c`:**
-    * [cite_start]**`allocproc()`:** Se inicializó `tickets` a **100** (el valor mínimo es 1) y `cpu_slices` a **0** para todo nuevo proceso[cite: 9, 25].
-    * [cite_start]**`scheduler()`:** Se implementó la lógica de Lottery Scheduling (cálculo de `total`, selección aleatoria y acumulación de tickets)[cite: 19, 20, 21, 22, 23].
-    * Se implementó la función `lcg_rand()` para la generación de números pseudoaleatorios.
-* **`sysproc.c`:**
-    * Se implementó la *syscall* `sys_settickets(int n)` para permitir que un proceso en espacio de usuario modifique su cantidad de tickets. [cite_start]Se incluye la robustez para asegurar que la cantidad de tickets sea al menos 1[cite: 10, 11, 12, 14].
-* **`syscall.c` / `syscall.h`:**
-    * [cite_start]Se agregaron las declaraciones y el mapeo necesarios para la nueva *syscall*[cite: 15].
+    * [cite_start]Se implementó la lógica de Lottery Scheduling en `scheduler()`[cite: 41].
+    * Se añadió la función `lcg_rand()` para generar números aleatorios.
+    * [cite_start]En `allocproc()`, `tickets` se inicializa a **100** [cite: 9] y `cpu_slices` a **0**.
+* [cite_start]**`sysproc.c`:** Se implementó la *syscall* `sys_settickets()` para que los procesos puedan cambiar su cantidad de tickets[cite: 11, 40]. [cite_start]Se maneja la robustez de asignar automáticamente un mínimo de 1 ticket si se intenta asignar 0[cite: 12].
+* [cite_start]**`syscall.c` / `syscall.h`:** Se agregaron las declaraciones y el mapeo necesarios para la nueva *syscall*[cite: 15].
 
 ### Archivos de Usuario
 
-* **`user/user.h`:**
-    * [cite_start]Se agregó la declaración `int settickets(int);` para exponer la función al espacio de usuario[cite: 16].
-    * Se añadió `typedef unsigned int uint;` para evitar errores de tipo `uint`.
-* **`user/usys.pl`:**
-    * [cite_start]Se agregó la entrada `entry("settickets");` para generar el código *assembly* necesario para llamar a la *syscall*[cite: 16].
-* **`user/demo.c`:**
-    * [cite_start]Programa de prueba que usa `fork()` para crear múltiples procesos (mínimo 10) y `settickets()` para asignar tickets de forma distinta (`50 * (i+1)`) a cada uno, lo que permite verificar la proporcionalidad de la CPU[cite: 35, 36, 44].
-* **`Makefile`:**
-    * Se agregó `_demo` a la variable `UPROGS` para que el programa de prueba sea compilado e incluido en el *filesystem* (`fs.img`).
+* [cite_start]**`user/user.h`:** Se agregó la declaración `int settickets(int);`[cite: 16].
+* [cite_start]**`user/usys.pl`:** Se agregó `entry("settickets");` para exponer la *syscall* al espacio de usuario[cite: 16].
+* [cite_start]**`user/demo.c`:** Programa de prueba que crea múltiples procesos (mínimo 10) usando `fork()` [cite: 35][cite_start], asigna tickets distintos (`settickets(50 * (i+1));`) [cite: 36] [cite_start]y simula carga de CPU[cite: 44].
+* **`Makefile`:** Se incluyó `_demo` en `UPROGS` para compilar el programa de prueba.
 
 ---
 
-## [cite_start]3. Dificultades Encontradas y Soluciones Implementadas [cite: 48]
+## 3. Dificultades Encontradas y Soluciones Implementadas
 
-| Dificultad Encontrada | Solución Implementada |
-| :--- | :--- |
-| **Cambios de arquitectura (RISC-V)** | Se reemplazaron funciones de *context switching* como `switchuvm` y `switchkvm` (que no existen en RISC-V) por la llamada correcta: `swtch(&mycpu()->context, &p->context);` |
-| **Manejo de argumentos de *syscall*** | Error `void value not ignored` al intentar usar `if (argint(0, &n))`. Se eliminó la comparación y se usó la llamada directa `argint(0, &n);` para obtener el argumento. |
-| **Contabilidad de CPU** | Error `struct proc has no member 'cpu_slices'`. Se solucionó agregando el campo `int cpu_slices;` a `struct proc` en `proc.h` y inicializándolo en `proc.c`. |
-| **Tipado de variables** | Error de tipo `uint` en archivos de usuario. Solucionado con `typedef unsigned int uint;` en `user/user.h`. |
-| **Ejecución del programa de prueba** | El programa de prueba no estaba disponible. Solucionado agregando `_demo` a `UPROGS` en el `Makefile` y recompilando el kernel/filesystem. |
-| **Salida desordenada** | La salida de los procesos en `printf()` era desordenada debido a la concurrencia. Esto es un comportamiento normal en XV6 y no se corrigió, ya que no era un requisito estricto de la tarea. |
+* **Manejo de argumentos de *syscall***: Error `void value not ignored` al usar `argint()`. Solucionado usando `argint(0, &n);` directamente.
+* **Errores de RISC-V vs x86**: Las funciones de *context switching* como `switchuvm` y `switchkvm` no existen; se reemplazaron por `swtch(&mycpu()->context, &p->context);`.
+* **Contabilidad de CPU**: Error `struct proc has no member 'cpu_slices'`. Solucionado agregando el campo `cpu_slices` a `struct proc`.
+* **Ejecución de programas de usuario**: El programa de prueba no estaba en el *filesystem*. Solucionado incluyendo `_demo` en `UPROGS` del `Makefile` y recompilando.
+* **Tipado de variables**: Error de tipo `uint` en archivos de usuario. Solucionado con `typedef unsigned int uint;` en `user/user.h`.
+* **Salida desordenada**: La salida con `printf()` es desordenada por la concurrencia de procesos en XV6. Esto es un comportamiento normal y no se consideró un error crítico para la funcionalidad del *scheduler*.
 
 ---
 
-## [cite_start]4. Posibles Problemas de Lottery Scheduling [cite: 49]
+## 4. Posibles Problemas de Lottery Scheduling
 
-El Lottery Scheduling, si bien es un planificador justo a largo plazo, presenta ciertas consideraciones inherentes a su diseño:
+* [cite_start]**Variabilidad por azar**: La fracción de CPU real de cada proceso puede variar a corto plazo debido a la naturaleza aleatoria del *scheduler*[cite: 49].
+* [cite_start]**Starvation**: Procesos con muy pocos tickets podrían esperar mucho tiempo si hay procesos con muchos tickets, aunque la probabilidad nunca es cero[cite: 49].
+* [cite_start]**No determinista**: El orden de ejecución cambia en cada corrida, lo que puede dificultar pruebas reproducibles[cite: 49].
+* [cite_start]**Overhead en generación de números aleatorios**: La generación de números y el cálculo de la suma total de tickets pueden introducir un pequeño *overhead* en cada ciclo del *scheduler*[cite: 49].
 
-* **Variabilidad por Azar (No Determinismo):** La asignación de CPU depende de la generación de números aleatorios. Esto significa que, a corto plazo, la fracción de CPU real recibida por un proceso puede desviarse del valor esperado, especialmente si el *quantum* es muy pequeño o el número de procesos es bajo. El orden de ejecución no es reproducible en distintas ejecuciones.
-* **Starvation Teórica:** Aunque la probabilidad de que un proceso con un solo ticket sea seleccionado nunca es cero, un proceso con muy pocos tickets en un sistema con procesos de muchos tickets podría experimentar esperas extremadamente largas antes de ser ejecutado.
-* **Overhead de Aleatoriedad:** La generación de números pseudoaleatorios y el cálculo de la suma total de tickets en cada ciclo del *scheduler* introduce un pequeño *overhead* en la ejecución.
-* **Manejo de I/O:** El *Lottery Scheduling* básico no maneja eficientemente las tareas ligadas a E/S (I/O-bound). Un proceso que despierta brevemente para realizar una E/S gasta un ticket sin aprovechar completamente el *quantum* asignado, siendo ineficiente.
+---
+
+**Conclusión:** Se implementó exitosamente un *scheduler* de tipo Lottery Scheduling en XV6-RISC-V, incluyendo la *syscall* `settickets`, la contabilidad de CPU y un programa de prueba que valida la proporcionalidad entre tickets y tiempo de CPU.
+
+**Siguiente paso:** ¿Necesitas ayuda para empezar a codificar el punto 2, la *syscall* `settickets(int n)`?
