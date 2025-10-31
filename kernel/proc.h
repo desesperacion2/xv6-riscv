@@ -91,6 +91,8 @@ struct proc {
   int killed;                  // If non-zero, have been killed
   int xstate;                  // Exit status to be returned to parent's wait
   int pid;                     // Process ID
+  int tickets;   // número de lotería (tickets) del proceso; mínimo 1
+  int cpu_slices; // contador de veces que el proceso fue ejecutado
 
   // wait_lock must be held when using this:
   struct proc *parent;         // Parent process

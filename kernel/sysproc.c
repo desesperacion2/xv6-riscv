@@ -105,3 +105,18 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+// Añadido para la tarea T2
+uint64
+sys_settickets(void)
+{
+    int n;
+    struct proc *p = myproc();
+
+    argint(0, &n);    // leer argumento desde user space
+    if(n < 1)
+        n = 1;
+
+    p->tickets = n;
+    return 0;
+}
+

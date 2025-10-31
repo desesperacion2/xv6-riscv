@@ -124,6 +124,8 @@ allocproc(void)
 found:
   p->pid = allocpid();
   p->state = USED;
+  p->tickets = 100;   // inicialización por defecto: 100 tickets
+  p->cpu_slices = 0;
 
   // Allocate a trapframe page.
   if((p->trapframe = (struct trapframe *)kalloc()) == 0){
@@ -418,46 +420,70 @@ kwait(uint64 addr)
 //  - swtch to start running that process.
 //  - eventually that process transfers control
 //    via swtch back to the scheduler.
+// LCG simple para generar números aleatorios en kernel
+static unsigned long lcg_rand_state = 123456789;
+
+static unsigned lcg_rand(void) {
+  lcg_rand_state = lcg_rand_state * 1103515245 + 12345;
+  return (unsigned)(lcg_rand_state & 0x7fffffff);
+}
 void
 scheduler(void)
 {
   struct proc *p;
-  struct cpu *c = mycpu();
 
-  c->proc = 0;
   for(;;){
-    // The most recent process to run may have had interrupts
-    // turned off; enable them to avoid a deadlock if all
-    // processes are waiting. Then turn them back off
-    // to avoid a possible race between an interrupt
-    // and wfi.
-    intr_on();
-    intr_off();
+    intr_on();  // activar interrupciones
 
-    int found = 0;
-    for(p = proc; p < &proc[NPROC]; p++) {
+    // 1) Calcular total de tickets de procesos RUNNABLE
+    int total = 0;
+    for(p = proc; p < &proc[NPROC]; p++){
       acquire(&p->lock);
-      if(p->state == RUNNABLE) {
-        // Switch to chosen process.  It is the process's job
-        // to release its lock and then reacquire it
-        // before jumping back to us.
-        p->state = RUNNING;
-        c->proc = p;
-        swtch(&c->context, &p->context);
-
-        // Process is done running for now.
-        // It should have changed its p->state before coming back.
-        c->proc = 0;
-        found = 1;
+      if(p->state == RUNNABLE){
+        if(p->tickets < 1) p->tickets = 1; // robustez: mínimo 1 ticket
+        total += p->tickets;
       }
       release(&p->lock);
     }
-    if(found == 0) {
-      // nothing to run; stop running on this core until an interrupt.
-      asm volatile("wfi");
+
+    if(total == 0)
+      continue; // ningún proceso RUNNABLE, pasar al siguiente ciclo
+
+    // 2) Elegir un ticket aleatorio en [1, total]
+    unsigned r = (lcg_rand() % total) + 1;
+    int acc = 0;
+    struct proc *chosen = 0;
+
+    // 3) Recorrer procesos acumulando tickets
+    for(p = proc; p < &proc[NPROC]; p++){
+      acquire(&p->lock);
+      if(p->state == RUNNABLE){
+        acc += p->tickets;
+        if(acc >= (int)r){
+          chosen = p;
+          break;
+        }
+      }
+      release(&p->lock);
+    }
+
+    if(chosen){
+      // 4) Incrementar contador de slices (CPU)
+      chosen->cpu_slices++;
+
+      // 5) Ejecutar proceso
+      chosen->state = RUNNING;
+      mycpu()->proc = chosen;
+
+      // Switch de contexto para RISC-V
+      swtch(&mycpu()->context, &chosen->context);
+
+      mycpu()->proc = 0;
+      release(&chosen->lock);
     }
   }
 }
+
 
 // Switch to scheduler.  Must hold only p->lock
 // and have changed proc->state. Saves and restores
