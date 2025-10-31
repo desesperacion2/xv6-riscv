@@ -35,7 +35,8 @@ Se utiliza un generador pseudoaleatorio tipo LCG (`lcg_rand()`).
 - Programas de usuario: `_demo` agregado a `UPROGS`.
 - Tipo `uint` no definido: se agregó `typedef unsigned int uint;`.
 - Salida mezclada de `printf()`: normal por concurrencia de procesos.
-
+- Problemas al borrar el readme y rehacerlo como informe, ya que el makefile necesita el readme para poder realizar el make qemu.
+- Problema para hacer que el readme tenga un preview y no se vea como un archivo de texto plano (no se logro)
 ---
 
 ## 4. Posibles problemas de Lottery Scheduling
