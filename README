@@ -98,20 +98,22 @@ sys_munrdprotect(void)
         return -1;
     return munrdprotect((void*)addr, len);
 }
+
 ##2.4. kernel/vm.c
+
 Se implementaron las funciones principales:
 
-Verificación de dirección
+-Verificación de dirección
 
-Iteración de páginas
+-Iteración de páginas
 
-Modificación de bits de la PTE
+-Modificación de bits de la PTE
 
-mrdprotect: limpiar PTE_R
+-mrdprotect: limpiar PTE_R
 
-munrdprotect: activar PTE_R
+-munrdprotect: activar PTE_R
 
-Ejecución de sfence_vma()
+-Ejecución de sfence_vma()
 
 ##2.5. user/user.h
 
@@ -128,7 +130,7 @@ entry("munrdprotect");
 
 ##2.7. user/rdprotect_test.c
 
-Se utilizó el programa de prueba oficial indicado en la tarea:
+Se utilizó el programa de prueba indicado en la tarea:
 
 Reserva una página con sbrk.
 
@@ -140,15 +142,16 @@ Vuelve a escribir (debe funcionar).
 
 Intenta leer → el proceso debe morir aquí.
 
-Por lo tanto los mensajes posteriores al fault no deben imprimirse.
+Por lo tanto los mensajes posteriores al fault no deben imprimirse, ya que el programa muere al momento de ejecutar esta linea 
+    char c = addr[0];
+    printf("Valor leído: %c (esto NO debería imprimirse)\n", c);.
+Debido a que ocurre un | load page fault | scause = 13 | stval = 0x4000 y el proceso muere, por lo tanto no continua iterando en el codigo de prueba
 
 Esto confirma que la protección está funcionando correctamente.
 
 ##2.8. kernel/trap.c
 
-La tarea no exige modificar usertrap, y por diseño XV6 debe matar al proceso cuando se detecta un acceso inválido.
-
-Se dejó el archivo tal como viene por defecto.
+Se le añado un else if que envia el mensaje de: "mrdprotect: access violation at 0x%lx\n"
 
 #3. Dificultades encontradas y soluciones
 Error: void value not ignored as it ought to be
@@ -162,7 +165,7 @@ argaddr() retorna void.
 Solución: usar el operador coma:
 
 if (argaddr(0, &addr), argint(1, &len) < 0)
-✔ Errores al linkear los system calls
+Errores al linkear los system calls
 
 Motivados por:
 
@@ -172,12 +175,12 @@ Falta de stubs en usys.pl
 
 Solución: agregarlos explícitamente.
 
-✔ Page fault inesperado en usertrap
+Page fault inesperado en usertrap
 
 Inicialmente se intentó manejar manualmente los scause.
-Sin embargo, la solución correcta era no modificar nada y permitir que XV6 mate al proceso.
+Sin embargo, se añadio solo un mensaje para poder visualizar mejor lo que estaba ocurriendo.
 
-✔ El test no muestra todos los printf
+El test no muestra todos los printf, ya que el proceso termina antes debido a como esta configurado.
 
 Esto es el comportamiento correcto.
 
@@ -194,13 +197,11 @@ Esto confirma que mrdprotect funciona correctamente.
 
 #Conclusión
 
-La implementación de mrdprotect y munrdprotect cumple completamente los objetivos de la tarea:
+La implementación de mrdprotect y munrdprotect cumple completamente los objetivos de la tarea, a pesar de no poder testear munrdprotect debido a que el codigo de prueba hace que el proceso muera antes de llegar a esa etapa.
 
 Se controlan los permisos de lectura en las PTE.
 
 Los accesos prohibidos generan un page fault como corresponde.
-
-El test oficial se comporta exactamente como se espera.
 
 No se realizaron modificaciones innecesarias al flujo de excepciones del sistema.
 
